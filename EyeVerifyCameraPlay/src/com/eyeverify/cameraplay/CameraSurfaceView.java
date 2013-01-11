@@ -6,14 +6,16 @@ import java.util.List;
 
 import android.content.Context;
 import android.hardware.Camera;
+import android.hardware.Camera.PictureCallback;
 import android.hardware.Camera.Size;
+import android.os.AsyncTask;
 import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.widget.TextView;
 
 public class CameraSurfaceView extends SurfaceView implements
-		SurfaceHolder.Callback, Camera.PreviewCallback {
+		SurfaceHolder.Callback, Camera.PreviewCallback, Camera.PictureCallback {
 	private static final String TAG = "CameraSurfaceView";
 	private SurfaceHolder mHolder;
 	private Camera mCamera;
@@ -21,10 +23,12 @@ public class CameraSurfaceView extends SurfaceView implements
 	private long prevFrameTick = System.currentTimeMillis();
 	private int perSecondFrameCount = 0;
 	private TextView mTxtFrameRate;
+	private PictureCallback mPictureCallback;
 
-	public CameraSurfaceView(Context context, Camera camera, TextView txtFrameRate) {
+	public CameraSurfaceView(Context context, Camera camera, TextView txtFrameRate/*, PictureCallback pictureCallback*/) {
 		super(context);
 		mCamera = camera;
+//		mPictureCallback = pictureCallback;
 		mTxtFrameRate = txtFrameRate;
 
 		// Install a SurfaceHolder.Callback so we get notified when the
@@ -96,16 +100,48 @@ public class CameraSurfaceView extends SurfaceView implements
 
 	public void onPreviewFrame(byte[] data, Camera camera) {
 		// System.arraycopy(data, 0, mData, 0, data.length);
-		if (System.currentTimeMillis() - prevFrameTick < 1000) {
-			perSecondFrameCount++;
-		} else {
-			Log.e("onPreviewFrame", perSecondFrameCount + " fps");
-			mTxtFrameRate.setText(perSecondFrameCount + " fps");
-			prevFrameTick = System.currentTimeMillis();
-			perSecondFrameCount = 0;
-		}
+		
+//		if (System.currentTimeMillis() - prevFrameTick < 1000) {
+//			perSecondFrameCount++;
+//		} else {
+		    //Log.e("onPreviewFrame", perSecondFrameCount + " fps");
+		    //mTxtFrameRate.setText(perSecondFrameCount + " fps");
+		    //	prevFrameTick = System.currentTimeMillis();
+		    //	perSecondFrameCount = 0;
+//		}
 
 		mData = new byte[data.length];
 		mCamera.addCallbackBuffer(mData);
+		
+//		TakePictureTask tc = new TakePictureTask();
+//		tc.execute((Void) null);
+	}
+	
+	@Override
+    public void onPictureTaken(byte[] data, Camera camera) {
+
+    	Log.d(TAG, "On Picture Taken");
+    }
+	
+	public class TakePictureTask extends AsyncTask<Void, Void, Boolean> {
+		@Override
+		protected Boolean doInBackground(Void... params) {
+			Log.d(TAG, "Doing in background Start");
+			
+			mCamera.takePicture(null, null, CameraSurfaceView.this);
+			
+			Log.d(TAG, "Doing in background End");
+			return true;
+		}
+
+		@Override
+		protected void onPostExecute(final Boolean success) {
+			Log.d(TAG, "Picture Taken");
+		}
+
+		@Override
+		protected void onCancelled() {
+			Log.d(TAG, "Picture Cancelled");
+		}
 	}
 }

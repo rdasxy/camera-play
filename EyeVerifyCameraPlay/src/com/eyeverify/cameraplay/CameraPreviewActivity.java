@@ -10,15 +10,12 @@ import java.util.List;
 
 import android.util.Log;
 import android.hardware.Camera;
-import android.hardware.Camera.PictureCallback;
-import android.hardware.Camera.PreviewCallback;
 import android.hardware.Camera.Size;
 import android.media.MediaRecorder;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.app.Activity;
-import android.view.Menu;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
@@ -38,59 +35,66 @@ public class CameraPreviewActivity extends Activity {
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
+		
 		setContentView(R.layout.camera_layout);
 		String whichCamera = getIntent().getStringExtra("CameraID");
+		
 		Log.d(TAG, "WhichCamera = " + whichCamera);
+		
 		if (whichCamera.equals("back")) {
-			mCamera = Camera.open();
+			mCamera = openBackFacingCameraGingerbread();
 		} else {
 			mCamera = openFrontFacingCameraGingerbread();
 			Camera.Parameters parameters = mCamera.getParameters();
 			List<Size> cameraSizes = parameters.getSupportedPictureSizes();
 			
-			for (Size size : cameraSizes) {
-				Log.d(TAG, "Height: " + size.height + " Width: " + size.width);
-			}
-			parameters.setPictureSize(1392, 1392);
+//			for (Size size : cameraSizes) {
+//				Log.d(TAG, "Height: " + size.height + " Width: " + size.width);
+//			}
+//			parameters.setPictureSize(1392, 1392);
 			mCamera.setParameters(parameters);
 		}
 		
+//		final PictureCallback mPicture = new PictureCallback() {
+//
+//		    @Override
+//		    public void onPictureTaken(byte[] data, Camera camera) {
+//
+//		    	Log.d(TAG, "On Picture Taken");
+////		        File pictureFile = getOutputMediaFile(MEDIA_TYPE_IMAGE);
+////		        if (pictureFile == null){
+////		            Log.d(TAG, "Error creating media file, check storage permissions: ");
+////		            return;
+////		        }
+////
+////		        try {
+////		        	Log.d(TAG, "Will try opening filestream");
+////		            FileOutputStream fos = new FileOutputStream(pictureFile);
+////		            fos.write(data);
+////		            Log.d(TAG, "Will try closing filestream");
+////		            fos.close();
+////		        } catch (FileNotFoundException e) {
+////		            Log.d(TAG, "File not found: " + e.getMessage());
+////		        } catch (IOException e) {
+////		            Log.d(TAG, "Error accessing file: " + e.getMessage());
+////		        }
+//		    }
+//		};
+		
 		TextView txtFrameRate = (TextView) findViewById(R.id.txtFrameRate);
 		
-		mPreview = new CameraSurfaceView(this, mCamera, txtFrameRate);
+		mPreview = new CameraSurfaceView(this, mCamera, txtFrameRate/*, mPicture*/);
 		FrameLayout preview = (FrameLayout) findViewById(R.id.camera_preview);
 		preview.addView(mPreview);
-		
-		final PictureCallback mPicture = new PictureCallback() {
-
-		    @Override
-		    public void onPictureTaken(byte[] data, Camera camera) {
-
-		        File pictureFile = getOutputMediaFile(1);
-		        if (pictureFile == null){
-		            Log.d(TAG, "Error creating media file, check storage permissions: ");
-		            return;
-		        }
-
-		        try {
-		            FileOutputStream fos = new FileOutputStream(pictureFile);
-		            fos.write(data);
-		            fos.close();
-		        } catch (FileNotFoundException e) {
-		            Log.d(TAG, "File not found: " + e.getMessage());
-		        } catch (IOException e) {
-		            Log.d(TAG, "Error accessing file: " + e.getMessage());
-		        }
-		    }
-		};
 		
 		Button captureButton = (Button) findViewById(R.id.button_capture);
 		captureButton.setOnClickListener(
 		    new View.OnClickListener() {
 		        @Override
 		        public void onClick(View v) {
+		        	Log.d(TAG, "Button Click");
 		            // get an image from the camera
-		            mCamera.takePicture(null, null, mPicture);
+		            mCamera.takePicture(null, null, mPreview);
 		        }
 		    }
 		);
@@ -130,8 +134,7 @@ public class CameraPreviewActivity extends Activity {
         // To be safe, you should check that the SDCard is mounted
         // using Environment.getExternalStorageState() before doing this.
 
-        File mediaStorageDir = new File(Environment.getExternalStoragePublicDirectory(
-                  Environment.DIRECTORY_PICTURES), "MyCameraApp");
+        File mediaStorageDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "cameraplay");
         // This location works best if you want the created images to be shared
         // between applications and persist after your app has been uninstalled.
 
@@ -156,6 +159,7 @@ public class CameraPreviewActivity extends Activity {
             return null;
         }
 
+        Log.d(TAG, "Filename = " + mediaFile.getAbsolutePath());
         return mediaFile;
     }
     
@@ -167,6 +171,26 @@ public class CameraPreviewActivity extends Activity {
 		for (int camIdx = 0; camIdx < cameraCount; camIdx++) {
 			Camera.getCameraInfo(camIdx, cameraInfo);
 			if (cameraInfo.facing == Camera.CameraInfo.CAMERA_FACING_FRONT) {
+				try {
+					cam = Camera.open(camIdx);
+				} catch (RuntimeException e) {
+					Log.e(TAG,
+							"Camera failed to open: " + e.getLocalizedMessage());
+				}
+			}
+		}
+
+		return cam;
+	}
+    
+    private Camera openBackFacingCameraGingerbread() {
+		int cameraCount = 0;
+		Camera cam = null;
+		Camera.CameraInfo cameraInfo = new Camera.CameraInfo();
+		cameraCount = Camera.getNumberOfCameras();
+		for (int camIdx = 0; camIdx < cameraCount; camIdx++) {
+			Camera.getCameraInfo(camIdx, cameraInfo);
+			if (cameraInfo.facing == Camera.CameraInfo.CAMERA_FACING_BACK) {
 				try {
 					cam = Camera.open(camIdx);
 				} catch (RuntimeException e) {
